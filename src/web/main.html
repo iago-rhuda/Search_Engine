@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PySearchNLP - Information Retrieval & NLP Suite</title>
+    <link rel="stylesheet" href="main.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Initialization Overlay -->
+    <div id="init-overlay" class="init-overlay">
+        <div class="init-card">
+            <div class="init-logo" data-i18n="logo_title">PySearchNLP</div>
+            <div class="spinner"></div>
+            <p id="init-status-msg" data-i18n="init_starting">Starting search engine pipeline...</p>
+        </div>
+    </div>
+
+    <div class="background-glows">
+        <div class="glow glow-1"></div>
+        <div class="glow glow-2"></div>
+    </div>
+
+    <div class="container">
+        <!-- Controls Panel (Theme & Language Selector) -->
+        <div class="controls-panel">
+            <button id="theme-toggle-btn" class="control-btn" title="Toggle Light/Dark Theme">🌓</button>
+            <div class="lang-selector-container">
+                <span class="lang-icon">🌐</span>
+                <select id="lang-select" class="lang-select">
+                    <option value="en">English</option>
+                    <option value="pt">Português</option>
+                    <option value="fr">Français</option>
+                    <option value="es">Español</option>
+                    <option value="de">Deutsch</option>
+                </select>
+            </div>
+        </div>
+
+        <header>
+            <div class="logo-area">
+                <h1 data-i18n="logo_title">PySearchNLP</h1>
+            </div>
+            <p class="subtitle" data-i18n="subtitle">Information Retrieval & NLP Processing Engine from Scratch</p>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <nav class="nav-tabs">
+            <button class="tab-btn active" data-tab="search-tab" data-i18n="tab_search">Search Portal</button>
+            <button class="tab-btn" data-tab="analytics-tab" data-i18n="tab_analytics">Corpus Analytics</button>
+            <button class="tab-btn" data-tab="index-tab" data-i18n="tab_inspector">Index Inspector</button>
+            <button class="tab-btn" data-tab="benchmark-tab" data-i18n="tab_performance">Engine Performance</button>
+        </nav>
+
+        <main class="tab-content">
+            <!-- TAB 1: SEARCH PORTAL -->
+            <section id="search-tab" class="tab-pane active">
+                <div class="search-section">
+                    <div class="search-bar-container">
+                        <input type="text" id="search-input" data-i18n-placeholder="search_placeholder" placeholder="Enter your natural language query (e.g., 'articles de la rubrique Focus parlant d'innovation')..." autocomplete="off">
+                        <select id="sort-select" class="sort-select">
+                            <option value="relevance" data-i18n="sort_relevance">Sort by Relevance</option>
+                            <option value="newest" data-i18n="sort_newest">Newest First</option>
+                            <option value="oldest" data-i18n="sort_oldest">Oldest First</option>
+                        </select>
+                        <button id="search-btn" data-i18n="search_btn">Search</button>
+                    </div>
+
+                    <!-- Database Notice -->
+                    <div class="database-notice" data-i18n="db_notice">
+                        Note: Since the database is 100% in French, search results will be returned in French.
+                    </div>
+
+                    <!-- Suggestions Panel -->
+                    <div class="suggestions-container">
+                        <span class="suggestions-label" data-i18n="try_queries">Try these queries:</span>
+                        <div class="suggestions-list">
+                            <button class="suggestion-tag">CNRS ou grandes écoles mais pas Centrale Paris</button>
+                            <button class="suggestion-tag">Je veux les articles sans image de 2013</button>
+                            <button class="suggestion-tag">Articles dont le titre contient le mot chimie</button>
+                            <button class="suggestion-tag">Je voudrais les articles de 2011 sur l’enseignement</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="search-layout">
+                    <!-- Results Column -->
+                    <div class="results-column">
+                        <div id="loader" class="loader">
+                            <div class="spinner"></div>
+                            <p>Analyzing query grammar and executing retrieval...</p>
+                        </div>
+
+                        <div id="results-area">
+                            <div id="results-info" class="results-info"></div>
+                            <div id="results-list" class="results-list"></div>
+                        </div>
+                    </div>
+
+                    <!-- NLP Query Diagnostics Side Column -->
+                    <aside class="diagnostics-column">
+                        <div id="diagnostics-panel" class="diagnostics-card" style="display: none;">
+                            <h3 data-i18n="nlp_title">NLP Pipeline Stepper</h3>
+                            
+                            <!-- Stepper Steps -->
+                            <div class="stepper">
+                                <div class="step">
+                                    <div class="step-num">1</div>
+                                    <div class="step-content">
+                                        <div class="step-title" data-i18n="step1_title">Tokenization & Noise Filtering</div>
+                                        <div class="step-desc" id="step-tokens" data-i18n="step1_desc">No keywords processed yet.</div>
+                                    </div>
+                                </div>
+                                <div class="step">
+                                    <div class="step-num">2</div>
+                                    <div class="step-content">
+                                        <div class="step-title" data-i18n="step2_title">Spelling Correction & Stemming</div>
+                                        <div class="step-desc" id="step-stems" data-i18n="step2_desc">Awaiting query input...</div>
+                                    </div>
+                                </div>
+                                <div class="step">
+                                    <div class="step-num">3</div>
+                                    <div class="step-content">
+                                        <div class="step-title" data-i18n="step3_title">Structural Metadata Constraints</div>
+                                        <div class="step-desc" id="step-metadata" data-i18n="step3_desc">No constraints detected.</div>
+                                    </div>
+                                </div>
+                                <div class="step">
+                                    <div class="step-num">4</div>
+                                    <div class="step-content">
+                                        <div class="step-title" data-i18n="step4_title">Parsed Boolean Logic</div>
+                                        <div class="step-desc">
+                                            <code class="code-equation" id="step-equation">Awaiting evaluation...</code>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="diagnostics-footer">
+                                <button id="toggle-json-btn" class="secondary-btn" data-i18n="btn_show_json">Show Structured Query JSON</button>
+                                <button id="toggle-logs-btn" class="secondary-btn" data-i18n="btn_show_logs">Show Engine Log Streams</button>
+                            </div>
+
+                            <div id="json-view" class="code-block-container" style="display: none; margin-top: 1rem;">
+                                <h4 data-i18n="json_header">Structured Query Representation</h4>
+                                <pre id="json-output"></pre>
+                            </div>
+
+                            <div id="logs-view" class="code-block-container" style="display: none; margin-top: 1rem;">
+                                <h4 data-i18n="logs_header">Real-Time Execution Logs</h4>
+                                <pre id="logs-output"></pre>
+                            </div>
+                        </div>
+                    </aside>
+                </div>
+            </section>
+
+            <!-- TAB 2: CORPUS ANALYTICS -->
+            <section id="analytics-tab" class="tab-pane">
+                <div class="analytics-grid">
+                    <div class="analytics-card stat-card">
+                        <span class="stat-icon">📚</span>
+                        <div class="stat-info">
+                            <span class="stat-value" id="stat-total-docs">-</span>
+                            <span class="stat-label" data-i18n="stat_total_docs">Total Documents Indexed</span>
+                        </div>
+                    </div>
+                    <div class="analytics-card stat-card">
+                        <span class="stat-icon">🗣️</span>
+                        <div class="stat-info">
+                            <span class="stat-value" id="stat-vocab-size">-</span>
+                            <span class="stat-label" data-i18n="stat_vocab_size">Vocabulary Size (Stems)</span>
+                        </div>
+                    </div>
+                    <div class="analytics-card stat-card">
+                        <span class="stat-icon">🖼️</span>
+                        <div class="stat-info">
+                            <span class="stat-value" id="stat-image-ratio">-</span>
+                            <span class="stat-label" data-i18n="stat_image_ratio">Articles with Images</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="analytics-charts">
+                    <div class="analytics-card chart-container">
+                        <h3 data-i18n="chart_rubrics">Document Rubric Distribution</h3>
+                        <div class="chart-bars" id="rubric-chart">
+                            <p class="chart-loading">Loading rubric insights...</p>
+                        </div>
+                    </div>
+
+                    <div class="analytics-card chart-container">
+                        <h3 data-i18n="chart_stems">Top High-Weight Vocabulary Stems (TF-IDF)</h3>
+                        <div class="chart-bars" id="terms-chart">
+                            <p class="chart-loading">Loading vocabulary weights...</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 3: INDEX INSPECTOR -->
+            <section id="index-tab" class="tab-pane">
+                <div class="inspector-card">
+                    <h3 data-i18n="inspect_title">Inverted Index Lookup Tool</h3>
+                    <p class="inspector-desc" data-i18n="inspect_desc">Query the underlying binary or hash-map index structures directly. Type a stemmed keyword or metadata term to inspect its occurrences and posting lists across the corpus.</p>
+                    
+                    <div class="inspector-form">
+                        <div class="input-group">
+                            <label for="inspector-term" data-i18n="lbl_term">Term / Word</label>
+                            <input type="text" id="inspector-term" placeholder="e.g., 'chim', 'russe', 'innov', 'focus'..." autocomplete="off">
+                        </div>
+                        <div class="input-group">
+                            <label for="inspector-field" data-i18n="lbl_field">Index Field</label>
+                            <select id="inspector-field" class="inspector-select">
+                                <option value="text" data-i18n="opt_text">Content (text)</option>
+                                <option value="title" data-i18n="opt_title">Title (title)</option>
+                                <option value="rubric" data-i18n="opt_rubric">Category (rubric)</option>
+                                <option value="author" data-i18n="opt_author">Author (author)</option>
+                                <option value="date" data-i18n="opt_date">Publish Date (date)</option>
+                                <option value="images" data-i18n="opt_images">Image metadata (images)</option>
+                            </select>
+                        </div>
+                        <button id="inspect-btn" data-i18n="btn_inspect">Query Inverted Index</button>
+                    </div>
+
+                    <div id="inspector-loader" class="loader" style="display: none;">
+                        <div class="spinner"></div>
+                        <p>Scanning indexes...</p>
+                    </div>
+
+                    <div id="inspector-results" class="inspector-results-area" style="display: none;">
+                        <div class="inspector-meta">
+                            <span id="inspector-results-count">-</span> <span data-i18n="inspect_matches">matches found in the</span> <strong><span id="inspector-results-field">-</span></strong> <span data-i18n="inspect_index">index.</span>
+                        </div>
+                        <div class="postings-wrapper">
+                            <h4 data-i18n="inspect_postings_title">Posting List Representation (Document ID & Term Freq)</h4>
+                            <div class="postings-grid" id="postings-list">
+                                <!-- Postings cards will go here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 4: ENGINE PERFORMANCE -->
+            <section id="benchmark-tab" class="tab-pane">
+                <div class="benchmark-card">
+                    <div class="benchmark-header">
+                        <div>
+                            <h3 data-i18n="perf_title">Engine Performance Benchmarks</h3>
+                            <p class="benchmark-desc" data-i18n="perf_desc">Measure the search retrieval latency, precision, and recall of the NLP search engine. Compare pre-computed validation statistics with live real-time latency tests.</p>
+                        </div>
+                        <button id="run-live-benchmark-btn" class="primary-btn pulse-btn" data-i18n="btn_live_benchmark">⚡ Run Live Benchmark</button>
+                    </div>
+
+                    <div class="benchmark-summary-grid">
+                        <div class="analytics-card stat-card">
+                            <span class="stat-icon">⏱️</span>
+                            <div class="stat-info">
+                                <span class="stat-value" id="benchmark-avg-latency">-</span>
+                                <span class="stat-label" data-i18n="lbl_pre_latency">Pre-computed Latency</span>
+                            </div>
+                        </div>
+                        <div class="analytics-card stat-card">
+                            <span class="stat-icon">⚡</span>
+                            <div class="stat-info">
+                                <span class="stat-value" id="benchmark-live-latency">-</span>
+                                <span class="stat-label" data-i18n="lbl_live_latency">Live Test Latency</span>
+                            </div>
+                        </div>
+                        <div class="analytics-card stat-card">
+                            <span class="stat-icon">🎯</span>
+                            <div class="stat-info">
+                                <span class="stat-value" id="benchmark-precision-recall">-</span>
+                                <span class="stat-label" data-i18n="lbl_accuracy">System Accuracy</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="benchmark-results-container">
+                        <h4 data-i18n="perf_table_title">Query Performance & Validation Test Suite</h4>
+                        <div class="benchmark-table-wrapper">
+                            <table class="benchmark-table">
+                                <thead>
+                                    <tr>
+                                        <th data-i18n="th_id">ID</th>
+                                        <th data-i18n="th_query">Validation Query Text</th>
+                                        <th data-i18n="th_docs">Docs Returned</th>
+                                        <th data-i18n="th_precision">Precision</th>
+                                        <th data-i18n="th_recall">Recall</th>
+                                        <th data-i18n="th_pre_speed">Pre-computed Speed</th>
+                                        <th data-i18n="th_live_speed">Live Speed (10 runs avg)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="benchmark-table-body">
+                                    <tr>
+                                        <td colspan="7" class="table-loading" data-i18n="loading_metrics">Loading performance metrics...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="main.js"></script>
+</body>
+</html>

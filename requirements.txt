@@ -1,0 +1,7 @@
+flask
+lxml
+nltk
+spacy
+matplotlib
+numpy
+pytest
