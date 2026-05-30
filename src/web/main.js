@@ -1120,6 +1120,63 @@ document.addEventListener('DOMContentLoaded', () => {
                             loadBenchmarks();
                         }
                     }
+                } else if (data.status && data.status.startsWith("Error:")) {
+                    clearInterval(interval);
+                    
+                    const initCard = document.querySelector('.init-card');
+                    if (initCard) {
+                        initCard.classList.add('error-state');
+                        const spinner = initCard.querySelector('.spinner');
+                        if (spinner) {
+                            spinner.style.display = 'none';
+                        }
+                    }
+                    
+                    // Build error presentation HTML in the selected language
+                    let errTitle = "Pipeline Initialization Failed";
+                    let errHelp = "Please verify your setup. If deploying on Render, check if the bulletins are committed under <code>data/BULLETINS/</code> or examine the logs in the Render dashboard.";
+                    let retryText = "Retry Connection";
+                    
+                    if (currentLang === 'pt') {
+                        errTitle = "Falha na Inicialização do Pipeline";
+                        errHelp = "Por favor, verifique as configurações. Se estiver implantando no Render, verifique se os boletins estão comitados na pasta <code>data/BULLETINS/</code> ou consulte os logs no painel do Render.";
+                        retryText = "Tentar Conectar Novamente";
+                    } else if (currentLang === 'fr') {
+                        errTitle = "Échec de l'initialisation du pipeline";
+                        errHelp = "Veuillez vérifier votre configuration. Si vous déployez sur Render, vérifiez si les bulletins sont commités dans le dossier <code>data/BULLETINS/</code> ou examinez les logs dans le tableau de bord Render.";
+                        retryText = "Réessayer la connexion";
+                    } else if (currentLang === 'es') {
+                        errTitle = "Fallo en la inicialización del pipeline";
+                        errHelp = "Por favor, verifique la configuración. Si está desplegando en Render, compruebe si los boletines están confirmados en la carpeta <code>data/BULLETINS/</code> o consulte los logs en el panel de Render.";
+                        retryText = "Reintentar conexión";
+                    } else if (currentLang === 'de') {
+                        errTitle = "Pipeline-Initialisierung fehlgeschlagen";
+                        errHelp = "Bitte überprüfen Sie Ihr Setup. Wenn Sie auf Render bereitstellen, prüfen Sie, ob die Bulletins im Ordner <code>data/BULLETINS/</code> committet sind oder überprüfen Sie die Logs im Render-Dashboard.";
+                        retryText = "Verbindung erneut versuchen";
+                    }
+                    
+                    let errHtml = `
+                        <div class="error-title-row" style="display: flex; align-items: center; gap: 10px; justify-content: center; margin-bottom: 10px;">
+                            <span class="error-warning-icon" style="font-size: 1.5rem;">⚠️</span>
+                            <h3 style="color: #ef4444; margin: 0; font-size: 1.3rem; font-weight: 800;">${errTitle}</h3>
+                        </div>
+                        <p style="color: #fca5a5; font-size: 0.95rem; margin-top: 10px; font-weight: 600;">${data.status}</p>
+                    `;
+                    
+                    if (data.error) {
+                        errHtml += `
+                            <div class="error-stack-container" style="text-align: left; width: 100%; margin-top: 15px;">
+                                <pre style="background: rgba(0,0,0,0.45); padding: 15px; border-radius: var(--radius-sm); font-family: var(--font-code); font-size: 0.8rem; overflow-x: auto; max-height: 220px; border: 1px solid rgba(239,68,68,0.25); color: #fecaca; margin: 0; white-space: pre-wrap; word-break: break-all;">${data.error}</pre>
+                            </div>
+                        `;
+                    }
+                    
+                    errHtml += `
+                        <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.4; margin-top: 15px;">${errHelp}</p>
+                        <button onclick="window.location.reload()" class="primary-btn" style="margin-top: 20px; background: #ef4444; box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4); border-color: #ef4444;">🔄 ${retryText}</button>
+                    `;
+                    
+                    initStatusMsg.innerHTML = errHtml;
                 } else {
                     let statusText = data.status;
                     if (statusText.includes("Phase 1")) {

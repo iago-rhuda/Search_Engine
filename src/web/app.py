@@ -43,11 +43,12 @@ search_engine = None
 stop_words_list = None
 is_pipeline_ready = False
 pipeline_status = "Starting pipeline..."
+pipeline_error = None
 
 
 def run_indexing_pipeline():
     """Executes the full document processing and indexing pipeline on startup."""
-    global spell_checker, stemmer_engine, search_engine, stop_words_list, is_pipeline_ready, pipeline_status
+    global spell_checker, stemmer_engine, search_engine, stop_words_list, is_pipeline_ready, pipeline_status, pipeline_error
     print("\n" + "="*50)
     print("      Initializing NLP Search Pipeline (PySearchNLP)      ")
     print("="*50)
@@ -61,10 +62,9 @@ def run_indexing_pipeline():
         xml_raw_path = os.path.join(phase1_dir, "xml.xml")
         
         builder = XMLBuilder()
-        bulletin_dir = "../data/BULLETINS"
+        bulletin_dir = os.path.join(BASE_DIR, "data", "BULLETINS")
         if not os.path.exists(bulletin_dir):
-            # Try path from workspace root
-            bulletin_dir = "data/BULLETINS"
+            raise FileNotFoundError(f"Bulletins directory not found at: {bulletin_dir}")
         
         bulletin_files = [f for f in os.listdir(bulletin_dir) if f.endswith(".htm")]
         for filename in bulletin_files:
@@ -132,9 +132,11 @@ def run_indexing_pipeline():
         print("\n[OK] Pipeline ready. Server listening for requests.")
         
     except Exception as e:
-        print(f"CRITICAL ERROR in pipeline: {e}")
         import traceback
-        traceback.print_exc()
+        err_msg = traceback.format_exc()
+        print(f"CRITICAL ERROR in pipeline: {e}\n{err_msg}")
+        pipeline_status = f"Error: {str(e)}"
+        pipeline_error = err_msg
 
 # Start the indexing pipeline in a background thread to avoid blocking server startup
 if not os.environ.get("PYSEARCH_SKIP_PIPELINE_THREAD"):
@@ -149,9 +151,7 @@ def serve_index():
 
 @app.route('/data/BULLETINS/<filename>')
 def serve_bulletin(filename):
-    bulletins_path = os.path.abspath(os.path.join(SRC_DIR, "../data/BULLETINS"))
-    if not os.path.exists(bulletins_path):
-        bulletins_path = os.path.abspath(os.path.join(SRC_DIR, "data/BULLETINS"))
+    bulletins_path = os.path.join(BASE_DIR, "data", "BULLETINS")
     return send_from_directory(bulletins_path, filename)
 
 
@@ -164,15 +164,14 @@ def serve_static(path):
 def handle_status():
     return jsonify({
         "ready": is_pipeline_ready,
-        "status": pipeline_status
+        "status": pipeline_status,
+        "error": pipeline_error
     })
 
 
 @app.route('/config', methods=['GET'])
 def serve_config():
-    bulletins_path = os.path.abspath(os.path.join(SRC_DIR, "../data/BULLETINS"))
-    if not os.path.exists(bulletins_path):
-        bulletins_path = os.path.abspath(os.path.join(SRC_DIR, "data/BULLETINS"))
+    bulletins_path = os.path.join(BASE_DIR, "data", "BULLETINS")
     return jsonify({
         "bulletinsPath": bulletins_path.replace('\\', '/')
     })
