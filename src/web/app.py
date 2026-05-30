@@ -396,7 +396,8 @@ def handle_run_benchmark():
 
 
 if __name__ == '__main__':
-    print("\n* PySearchNLP Server starting at http://localhost:5000")
+    port = int(os.environ.get("PORT", 5000))
+    print(f"\n* PySearchNLP Server starting at http://0.0.0.0:{port}")
     # Disable reloader to prevent duplicate pipeline execution in debug mode
-    app.run(debug=True, use_reloader=False, port=5000)
+    app.run(debug=True, use_reloader=False, host='0.0.0.0', port=port)
 

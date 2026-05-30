@@ -5,3 +5,4 @@ spacy
 matplotlib
 numpy
 pytest
+gunicorn
