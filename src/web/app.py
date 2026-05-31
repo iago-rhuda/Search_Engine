@@ -43,12 +43,22 @@ search_engine = None
 stop_words_list = None
 is_pipeline_ready = False
 pipeline_status = "Starting pipeline..."
+pipeline_detail = ""
 pipeline_error = None
 
 
+def update_pipeline_status(status, detail):
+    global pipeline_status, pipeline_detail
+    pipeline_status = status
+    pipeline_detail = detail
+    print(f"[{status}] {detail}", flush=True)
+    import time
+    time.sleep(0.002) # Yield GIL to keep server responsive
+
 def run_indexing_pipeline(force_rebuild=False):
     """Executes the document processing and indexing pipeline, or loads pre-built components if available."""
-    global spell_checker, stemmer_engine, search_engine, stop_words_list, is_pipeline_ready, pipeline_status, pipeline_error
+    global spell_checker, stemmer_engine, search_engine, stop_words_list, is_pipeline_ready, pipeline_status, pipeline_detail, pipeline_error
+    import time
     print("\n" + "="*50)
     print("      Initializing NLP Search Pipeline (PySearchNLP)      ")
     print("="*50)
@@ -88,22 +98,26 @@ def run_indexing_pipeline(force_rebuild=False):
             print("[INFO] Pre-built index files found. Skipping corpus generation phases.")
             
             # Phase 4: Component Initialization
-            pipeline_status = "Phase 4: Loading Search Components"
-            print("\n--- [Phase 4] Loading Search Components ---")
-            
+            update_pipeline_status("Phase 4: Loading Search Components", "Initializing stemmer...")
             stemmer_engine = Stemmer(xml_filtered_path, stem_mapping_path)
+            
+            update_pipeline_status("Phase 4: Loading Search Components", "Loading spelling lexicon...")
             spell_checker = SpellChecker(lexicon_file=stem_mapping_path)
-            search_engine = SearchEngine(index_dir=phase3_dir, xml_path=xml_raw_path)
+            
+            # This loads the metadata and the index files
+            search_engine = SearchEngine(index_dir=phase3_dir, xml_path=xml_raw_path, status_callback=update_pipeline_status)
+            
+            update_pipeline_status("Phase 4: Loading Search Components", "Loading stop words dictionary...")
             stop_words_list = Tokenizer(xml_filepath=xml_raw_path, output_dir=phase2_dir).load_dictionary(stop_words_path)
             
             is_pipeline_ready = True
             pipeline_status = "Ready"
+            pipeline_detail = "Loaded successfully."
             print("\n[OK] Search engine loaded successfully from pre-built indexes.")
             return
 
         # Phase 1: Corpus XML Generation
-        pipeline_status = "Phase 1: XML Corpus Generation"
-        print("\n--- [Phase 1] XML Corpus Generation ---")
+        update_pipeline_status("Phase 1: XML Corpus Generation", "Scanning bulletins directory...")
         os.makedirs(phase1_dir, exist_ok=True)
         
         builder = XMLBuilder()
@@ -112,7 +126,10 @@ def run_indexing_pipeline(force_rebuild=False):
             raise FileNotFoundError(f"Bulletins directory not found at: {bulletin_dir}")
         
         bulletin_files = [f for f in os.listdir(bulletin_dir) if f.endswith(".htm")]
-        for filename in bulletin_files:
+        total_files = len(bulletin_files)
+        for idx, filename in enumerate(bulletin_files, 1):
+            if idx % 10 == 0 or idx == total_files:
+                update_pipeline_status("Phase 1: XML Corpus Generation", f"Parsing bulletin {idx}/{total_files} ({filename})...")
             try:
                 parser = BulletinParser(os.path.join(bulletin_dir, filename))
                 data = parser.parse()
@@ -120,18 +137,18 @@ def run_indexing_pipeline(force_rebuild=False):
                     builder.add_document(data)
             except Exception:
                 continue
+        
+        update_pipeline_status("Phase 1: XML Corpus Generation", "Saving generated XML corpus...")
         builder.save(xml_raw_path)
         print(f"Raw XML corpus generated at: {xml_raw_path}")
 
         # Phase 2: Tokenization and Stopword Filtering
-        pipeline_status = "Phase 2: Tokenization & Stopword Filtering"
-        print("\n--- [Phase 2] Tokenization & Stopword Filtering ---")
+        update_pipeline_status("Phase 2: Tokenization & Stopword Filtering", "Tokenizing documents and analyzing TF-IDF...")
         tokenizer = Tokenizer(xml_filepath=xml_raw_path, output_dir=phase2_dir)
         tokenizer.export_stats()
         
         # Phase 3: Stemming and Inverted Indexing
-        pipeline_status = "Phase 3: Stemming & Inverted Indexing"
-        print("\n--- [Phase 3] Stemming & Inverted Indexing ---")
+        update_pipeline_status("Phase 3: Stemming & Inverted Indexing", "Running stemmer and computing weights...")
         os.makedirs(phase3_dir, exist_ok=True)
         
         # Initialize Stemmer and generate word-to-stem mapping
@@ -141,22 +158,19 @@ def run_indexing_pipeline(force_rebuild=False):
         # Recalculate stats on stems and generate final filtered XML
         tokenizer.export_stem_stats(stem_dict_file=stem_mapping_path, target_xml=xml_filtered_path, out_file=tfidf_path, filter_again=True)
         
-        print("Generating inverted index files...")
+        update_pipeline_status("Phase 3: Stemming & Inverted Indexing", "Generating inverted index files...")
         index_gen = InvertedIndexGenerator(xml_filepath=xml_final_path, output_dir=phase3_dir)
         index_gen.generate()
         index_gen.export()
         
         # Phase 4: Component Initialization
-        pipeline_status = "Phase 4: Loading Search Components"
-        print("\n--- [Phase 4] Loading Search Components ---")
-        
+        update_pipeline_status("Phase 4: Loading Search Components", "Initializing search objects...")
         spell_checker = SpellChecker(lexicon_file=stem_mapping_path)
-        search_engine = SearchEngine(index_dir=phase3_dir, xml_path=xml_raw_path)
+        search_engine = SearchEngine(index_dir=phase3_dir, xml_path=xml_raw_path, status_callback=update_pipeline_status)
         stop_words_list = tokenizer.load_dictionary(stop_words_path)
         
         # Phase 5: Auto-run Evaluation Benchmark
-        pipeline_status = "Phase 5: Running Evaluation Auto-Benchmark"
-        print("\n--- [Phase 5] Running Evaluation Auto-Benchmark ---")
+        update_pipeline_status("Phase 5: Running Evaluation Auto-Benchmark", "Executing test queries...")
         try:
             from evaluation import run_evaluation_pipeline
             run_evaluation_pipeline(base_dir=BASE_DIR, runs=100, inspect=True, top=50)
@@ -166,6 +180,7 @@ def run_indexing_pipeline(force_rebuild=False):
             
         is_pipeline_ready = True
         pipeline_status = "Ready"
+        pipeline_detail = "System loaded successfully."
         print("\n[OK] Pipeline ready. Server listening for requests.")
         
     except Exception as e:
@@ -173,6 +188,7 @@ def run_indexing_pipeline(force_rebuild=False):
         err_msg = traceback.format_exc()
         print(f"CRITICAL ERROR in pipeline: {e}\n{err_msg}")
         pipeline_status = f"Error: {str(e)}"
+        pipeline_detail = ""
         pipeline_error = err_msg
 
 # Start the indexing pipeline in a background thread to avoid blocking server startup
@@ -202,6 +218,7 @@ def handle_status():
     return jsonify({
         "ready": is_pipeline_ready,
         "status": pipeline_status,
+        "detail": pipeline_detail,
         "error": pipeline_error
     })
 

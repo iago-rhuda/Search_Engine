@@ -1192,7 +1192,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     } else if (statusText.includes("Starting")) {
                         statusText = getDynamicString("init_starting") || statusText;
                     }
-                    initStatusMsg.textContent = statusText;
+                    
+                    if (data.detail) {
+                        initStatusMsg.innerHTML = `${statusText}<br><span class="init-detail" style="font-size: 0.85rem; opacity: 0.7; color: var(--secondary); margin-top: 5px; display: block;">${escapeHtml(data.detail)}</span>`;
+                    } else {
+                        initStatusMsg.textContent = statusText;
+                    }
                 }
             } catch (err) {
                 console.error("Error checking initialization status: ", err);

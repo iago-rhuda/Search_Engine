@@ -49,9 +49,10 @@ class BinarySearchTree:
 
 class SearchEngine:
     """Core engine for boolean search and metadata filtering."""
-    def __init__(self, index_dir: str, xml_path: str):
+    def __init__(self, index_dir: str, xml_path: str, status_callback=None):
         self.index_dir = index_dir
         self.xml_path = xml_path
+        self.status_callback = status_callback
         self.indexes = {}
         self.doc_titles = {}
         self.doc_dates = {}
@@ -63,6 +64,8 @@ class SearchEngine:
 
     def _load_doc_metadata(self):
         """Loads basic document info (title, date) from the XML corpus for display."""
+        if self.status_callback:
+            self.status_callback("Phase 4: Loading Search Components", "Parsing XML corpus metadata...")
         if not os.path.exists(self.xml_path):
             print(f"Warning: XML corpus not found at {self.xml_path}")
             return
@@ -100,6 +103,9 @@ class SearchEngine:
                 field = filename.replace("inverse_", "").replace(".txt", "")
                 filepath = os.path.join(self.index_dir, filename)
                 
+                if self.status_callback:
+                    self.status_callback("Phase 4: Loading Search Components", f"Loading index: {field}...")
+                
                 # Metadata fields use BST for performance, content fields use hash maps
                 if field in metadata_fields:
                     self.indexes[field] = self._read_inverse_file_bst(filepath)
@@ -111,8 +117,13 @@ class SearchEngine:
     def _read_inverse_file_bst(self, filepath: str) -> BinarySearchTree:
         """Parses an index file and constructs a Binary Search Tree."""
         items = []
+        import time
+        line_count = 0
         with open(filepath, 'r', encoding='utf-8') as f:
             for line in f:
+                line_count += 1
+                if line_count % 500 == 0:
+                    time.sleep(0.002) # Yield GIL to prevent starving web thread
                 line = line.strip()
                 if not line:
                     continue
@@ -131,8 +142,13 @@ class SearchEngine:
     def _read_inverse_file(self, filepath: str) -> dict:
         """Parses an index file into a mapping: term -> {doc_id: frequency}."""
         index = {}
+        import time
+        line_count = 0
         with open(filepath, 'r', encoding='utf-8') as f:
             for line in f:
+                line_count += 1
+                if line_count % 500 == 0:
+                    time.sleep(0.002) # Yield GIL to prevent starving web thread
                 line = line.strip()
                 if not line:
                     continue
