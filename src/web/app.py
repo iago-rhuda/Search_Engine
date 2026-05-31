@@ -46,20 +46,65 @@ pipeline_status = "Starting pipeline..."
 pipeline_error = None
 
 
-def run_indexing_pipeline():
-    """Executes the full document processing and indexing pipeline on startup."""
+def run_indexing_pipeline(force_rebuild=False):
+    """Executes the document processing and indexing pipeline, or loads pre-built components if available."""
     global spell_checker, stemmer_engine, search_engine, stop_words_list, is_pipeline_ready, pipeline_status, pipeline_error
     print("\n" + "="*50)
     print("      Initializing NLP Search Pipeline (PySearchNLP)      ")
     print("="*50)
     
     try:
+        phase1_dir = os.path.join(OUTPUTS_DIR, "phase_1_xml")
+        xml_raw_path = os.path.join(phase1_dir, "xml.xml")
+        
+        phase2_dir = os.path.join(OUTPUTS_DIR, "phase_2_filtered")
+        stop_words_path = os.path.join(phase2_dir, "stop_words.txt")
+        xml_filtered_path = os.path.join(phase2_dir, "corpus_filtered.xml")
+        
+        phase3_dir = os.path.join(OUTPUTS_DIR, "phase_3_indexed")
+        stem_mapping_path = os.path.join(phase3_dir, "stems_nltk.txt")
+        tfidf_path = os.path.join(phase3_dir, "tfidf_coefficients.txt")
+        xml_final_path = os.path.join(phase3_dir, "corpus_filtered_v2.xml")
+        
+        # Check if all critical generated files exist
+        required_files = [
+            xml_raw_path,
+            stop_words_path,
+            xml_filtered_path,
+            stem_mapping_path,
+            tfidf_path,
+            xml_final_path,
+            os.path.join(phase3_dir, "inverse_text.txt"),
+            os.path.join(phase3_dir, "inverse_title.txt"),
+            os.path.join(phase3_dir, "inverse_author.txt"),
+            os.path.join(phase3_dir, "inverse_date.txt"),
+            os.path.join(phase3_dir, "inverse_rubric.txt"),
+            os.path.join(phase3_dir, "inverse_images.txt"),
+        ]
+        
+        prebuilt_exists = all(os.path.exists(f) for f in required_files)
+        
+        if prebuilt_exists and not force_rebuild:
+            print("[INFO] Pre-built index files found. Skipping corpus generation phases.")
+            
+            # Phase 4: Component Initialization
+            pipeline_status = "Phase 4: Loading Search Components"
+            print("\n--- [Phase 4] Loading Search Components ---")
+            
+            stemmer_engine = Stemmer(xml_filtered_path, stem_mapping_path)
+            spell_checker = SpellChecker(lexicon_file=stem_mapping_path)
+            search_engine = SearchEngine(index_dir=phase3_dir, xml_path=xml_raw_path)
+            stop_words_list = Tokenizer(xml_filepath=xml_raw_path, output_dir=phase2_dir).load_dictionary(stop_words_path)
+            
+            is_pipeline_ready = True
+            pipeline_status = "Ready"
+            print("\n[OK] Search engine loaded successfully from pre-built indexes.")
+            return
+
         # Phase 1: Corpus XML Generation
         pipeline_status = "Phase 1: XML Corpus Generation"
         print("\n--- [Phase 1] XML Corpus Generation ---")
-        phase1_dir = os.path.join(OUTPUTS_DIR, "phase_1_xml")
         os.makedirs(phase1_dir, exist_ok=True)
-        xml_raw_path = os.path.join(phase1_dir, "xml.xml")
         
         builder = XMLBuilder()
         bulletin_dir = os.path.join(BASE_DIR, "data", "BULLETINS")
@@ -81,19 +126,12 @@ def run_indexing_pipeline():
         # Phase 2: Tokenization and Stopword Filtering
         pipeline_status = "Phase 2: Tokenization & Stopword Filtering"
         print("\n--- [Phase 2] Tokenization & Stopword Filtering ---")
-        phase2_dir = os.path.join(OUTPUTS_DIR, "phase_2_filtered")
         tokenizer = Tokenizer(xml_filepath=xml_raw_path, output_dir=phase2_dir)
         tokenizer.export_stats()
         
         # Phase 3: Stemming and Inverted Indexing
         pipeline_status = "Phase 3: Stemming & Inverted Indexing"
         print("\n--- [Phase 3] Stemming & Inverted Indexing ---")
-        phase3_dir = os.path.join(OUTPUTS_DIR, "phase_3_indexed")
-        xml_filtered_path = os.path.join(phase2_dir, "corpus_filtered.xml")
-        stem_mapping_path = os.path.join(phase3_dir, "stems_nltk.txt")
-        tfidf_path = os.path.join(phase3_dir, "tfidf_coefficients.txt")
-        xml_final_path = os.path.join(phase3_dir, "corpus_filtered_v2.xml")
-        
         os.makedirs(phase3_dir, exist_ok=True)
         
         # Initialize Stemmer and generate word-to-stem mapping
@@ -111,7 +149,6 @@ def run_indexing_pipeline():
         # Phase 4: Component Initialization
         pipeline_status = "Phase 4: Loading Search Components"
         print("\n--- [Phase 4] Loading Search Components ---")
-        stop_words_path = os.path.join(phase2_dir, "stop_words.txt")
         
         spell_checker = SpellChecker(lexicon_file=stem_mapping_path)
         search_engine = SearchEngine(index_dir=phase3_dir, xml_path=xml_raw_path)
@@ -139,7 +176,7 @@ def run_indexing_pipeline():
         pipeline_error = err_msg
 
 # Start the indexing pipeline in a background thread to avoid blocking server startup
-if not os.environ.get("PYSEARCH_SKIP_PIPELINE_THREAD"):
+if not os.environ.get("PYSEARCH_SKIP_PIPELINE_THREAD") and "--build-index" not in sys.argv:
     threading.Thread(target=run_indexing_pipeline, daemon=True).start()
 
 
@@ -395,6 +432,12 @@ def handle_run_benchmark():
 
 
 if __name__ == '__main__':
+    # Build index only mode
+    if len(sys.argv) > 1 and sys.argv[1] == '--build-index':
+        print("Running indexing pipeline in build-only mode...")
+        run_indexing_pipeline(force_rebuild=True)
+        sys.exit(0)
+
     port = int(os.environ.get("PORT", 5000))
     print(f"\n* PySearchNLP Server starting at http://0.0.0.0:{port}")
     # Disable reloader to prevent duplicate pipeline execution in debug mode
